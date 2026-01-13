@@ -10,14 +10,22 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 from django.conf import settings
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.permissions import AllowAny
+
 from .utils import save_plot
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import load_model
 from sklearn.metrics import mean_squared_error, r2_score
 
-
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
 
 class StockPredictionAPIView(APIView):
+
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    permission_classes = (AllowAny,)
     def post(self, request):
         serializer = StockPredictionSerializer(data=request.data)
         if serializer.is_valid():
