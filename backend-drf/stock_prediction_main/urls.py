@@ -24,5 +24,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
     # Base API Endpoint
-    path('api/v1/',include('api.urls'))
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('api/v1/',include('api.urls')),
+] 
+
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
