@@ -33,7 +33,7 @@ ALLOWED_HOSTS = [
     "stock-prediction-portal-production-b150.up.railway.app",
     ".railway.app",
     "localhost",
-    "127.0.0.1"
+    "127.0.0.1",
 ]
 
 
