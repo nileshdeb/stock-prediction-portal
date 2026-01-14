@@ -26,130 +26,131 @@ class StockPredictionAPIView(APIView):
 
     authentication_classes = (CsrfExemptSessionAuthentication,)
     permission_classes = (AllowAny,)
+
     def post(self, request):
         serializer = StockPredictionSerializer(data=request.data)
-        if serializer.is_valid():
-            ticker = serializer.validated_data['ticker']
 
-            # Fetch the data from yfinance
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        ticker = serializer.validated_data['ticker'].upper()
+
+        # -------------------------------
+        # 1️⃣ Fetch stock data safely
+        # -------------------------------
+        try:
             now = datetime.now()
-            start=datetime(now.year-10, now.month, now.day)
-            end= now
-            df =yf.download(ticker,start,end)
+            start = datetime(now.year - 10, now.month, now.day)
+
+            df = yf.download(ticker, start, now, progress=False)
+
             if df.empty:
-                return Response({"error":"No data found for the given ticker.",
-                                "status":status.HTTP_404_NOT_FOUND })
-            
-            df =df.reset_index()
-            # generate basic plot
-            plt.switch_backend('AGG')
-            plt.figure(figsize=(12,5))
-            plt.plot(df.Close,label='Closing Price')
-            plt.title(f'Closing price of {ticker}')
-            plt.xlabel('Days')
-            plt.ylabel('Price')
-            plt.legend()
-            # save the plot to a file
-            plot_img_path =f'{ticker}_plot.png'
-            plot_img = save_plot(plot_img_path)
+                return Response(
+                    {"error": f"No data found for ticker '{ticker}'"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-            # 100 Days moving avg
-            ma100 =df.Close.rolling(100).mean()
-            plt.switch_backend('AGG')
-            plt.figure(figsize=(12,5))
-            plt.plot(df.Close,label='Closing Price')
-            plt.plot(ma100, 'r', label = '100 DMA')
-            plt.title(f'100 Days Moving Average of {ticker}')
-            plt.xlabel('Days')
-            plt.ylabel('Price')
-            plt.legend()
-            plot_img_path =f'{ticker}_100_dma.png'
-            plot_100_dma = save_plot(plot_img_path)
+        except Exception as e:
+            return Response(
+                {"error": "Failed to fetch stock data", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-            # 200 Days moving avg
-            ma200 =df.Close.rolling(200).mean()
-            plt.switch_backend('AGG')
-            plt.figure(figsize=(12,5))
-            plt.plot(df.Close,label='Closing Price')
-            plt.plot(ma100, 'r', label = '100 DMA')
-            plt.plot(ma200, 'g', label = '200 DMA')
+        df = df.reset_index()
+        plt.switch_backend('AGG')
 
-            plt.title(f'200 Days Moving Average of {ticker}')
-            plt.xlabel('Days')
-            plt.ylabel('Price')
-            plt.legend()
-            plot_img_path =f'{ticker}_200_dma.png'
-            plot_200_dma = save_plot(plot_img_path)
+        # -------------------------------
+        # 2️⃣ Plots
+        # -------------------------------
+        plt.figure(figsize=(12, 5))
+        plt.plot(df.Close, label='Closing Price')
+        plt.legend()
+        plot_img = save_plot(f'{ticker}_plot.png')
 
-            # splitting data into Training and Testing
-            data_training = pd.DataFrame(df.Close[0:int(len(df)*0.7)])
-            data_testing = pd.DataFrame(df.Close[int(len(df)*0.7):int(len(df))])
+        ma100 = df.Close.rolling(100).mean()
+        plt.figure(figsize=(12, 5))
+        plt.plot(df.Close)
+        plt.plot(ma100, 'r')
+        plot_100_dma = save_plot(f'{ticker}_100_dma.png')
 
-            # Scaling down the data between 0 and 1
-            scaler = MinMaxScaler(feature_range=(0,1))
+        ma200 = df.Close.rolling(200).mean()
+        plt.figure(figsize=(12, 5))
+        plt.plot(df.Close)
+        plt.plot(ma100, 'r')
+        plt.plot(ma200, 'g')
+        plot_200_dma = save_plot(f'{ticker}_200_dma.png')
 
-            # load ml model
-            model = load_model('stock_prediction_model.keras')
+        # -------------------------------
+        # 3️⃣ Prepare ML data
+        # -------------------------------
+        data_training = pd.DataFrame(df.Close[:int(len(df) * 0.7)])
+        data_testing = pd.DataFrame(df.Close[int(len(df) * 0.7):])
 
-            # Preparing Test Data
-            past_100_days= data_training.tail(100)
-            final_df = pd.concat([past_100_days, data_testing], ignore_index=True)
-            input_data = scaler.fit_transform(final_df)
+        scaler = MinMaxScaler(feature_range=(0, 1))
 
-            x_test =[]
-            y_test =[]
+        model_path = os.path.join(settings.BASE_DIR, 'stock_prediction_model.keras')
+        if not os.path.exists(model_path):
+            return Response(
+                {"error": "ML model not found on server"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-            for i in range(100, input_data.shape[0]):
-                x_test.append(input_data[i-100:i])
-                y_test.append(input_data[i,0])
-            x_test, y_test = np.array(x_test), np.array(y_test) 
+        model = load_model(model_path)
 
-            # Making Predictions
-            y_predicted=model.predict(x_test)
+        past_100_days = data_training.tail(100)
+        final_df = pd.concat([past_100_days, data_testing])
+        input_data = scaler.fit_transform(final_df)
 
-            # Revert the scaled prices to original price
-            y_predicted = scaler.inverse_transform(y_predicted.reshape(-1,1)).flatten()
-            y_test= scaler.inverse_transform(y_test.reshape(-1,1)).flatten()
+        x_test, y_test = [], []
+        for i in range(100, input_data.shape[0]):
+            x_test.append(input_data[i - 100:i])
+            y_test.append(input_data[i, 0])
 
-            
-    
-            # Plot the final Prediction
-            plt.switch_backend('AGG')
-            plt.figure(figsize=(12,5))
-            plt.plot(y_test,'b',label='Original Price')
-            plt.plot(y_predicted, 'r', label = 'Predicted Price')
+        x_test = np.array(x_test)
+        y_test = np.array(y_test)
 
-            plt.title(f'Final Prediction for {ticker}')
-            plt.xlabel('Days')
-            plt.ylabel('Price')
-            plt.legend()
-            plot_img_path =f'{ticker}_final_prediction.png'
-            plot_prediction = save_plot(plot_img_path)
+        # -------------------------------
+        # 4️⃣ Prediction
+        # -------------------------------
+        y_predicted = model.predict(x_test)
 
-            # Model Evalution 
-            # MSE
-            mse = mean_squared_error(y_test, y_predicted)
+        y_predicted = scaler.inverse_transform(y_predicted.reshape(-1, 1)).flatten()
+        y_test = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
 
-            #RootMSE
-            rmse=np.sqrt(mse)
+        plt.figure(figsize=(12, 5))
+        plt.plot(y_test, label='Actual')
+        plt.plot(y_predicted, 'r', label='Predicted')
+        plt.legend()
+        plot_prediction = save_plot(f'{ticker}_prediction.png')
 
-            # R-squared
-            r2 = r2_score(y_test,y_predicted)
+        # -------------------------------
+        # 5️⃣ Metrics
+        # -------------------------------
+        mse = mean_squared_error(y_test, y_predicted)
+        rmse = np.sqrt(mse)
+        r2 = r2_score(y_test, y_predicted)
 
-
-
-
-
-
-
-
-            return Response({'status':'success',
-                             'plot_img':plot_img,
-                             'plot_100_dma':plot_100_dma,
-                             'plot_200_dma':plot_200_dma,
-                             'plot_prediction':plot_prediction,
-                             'mse':mse,
-                             'rmse':rmse,
-                             'r2':r2,
-
-                             })
+        # -------------------------------
+        # 6️⃣ Final Response
+        # -------------------------------
+        return Response(
+            {
+                "status": "success",
+                "ticker": ticker,
+                "plots": {
+                    "price": plot_img,
+                    "dma_100": plot_100_dma,
+                    "dma_200": plot_200_dma,
+                    "prediction": plot_prediction,
+                },
+                "metrics": {
+                    "mse": round(float(mse), 4),
+                    "rmse": round(float(rmse), 4),
+                    "r2": round(float(r2), 4),
+                }
+            },
+            status=status.HTTP_200_OK
+        )
