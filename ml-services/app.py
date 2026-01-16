@@ -7,6 +7,8 @@ import yfinance as yf
 from datetime import datetime
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import load_model
+import json
+import sys
 
 st.set_page_config(page_title="Stock Prediction ML Service", layout="wide")
 
@@ -57,7 +59,9 @@ def predict_from_ticker(ticker):
 
 if ticker:
     result = predict_from_ticker(ticker)
-    st.json(result)
+
+    # 👇 return raw JSON (no UI)
+    st.write(result)
     st.stop()
 
 # -----------------------------
