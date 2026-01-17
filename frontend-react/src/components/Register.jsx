@@ -20,7 +20,7 @@ const Register = () => {
         username, email, password
     }
     try{
-      const response = await axios.post('https://giving-tranquility-production-2d3b.up.railway.app/api/v1/register/', userData)
+      const response = await axios.post('http://127.0.0.1:8000/api/v1/register/', userData)
       console.log('response.data==>',response.data)
       console.log('Registration successful');
       setErrors({})
