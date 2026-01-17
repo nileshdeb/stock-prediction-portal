@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+import os
+
 
 
 
@@ -94,14 +96,13 @@ WSGI_APPLICATION = "stock_prediction_main.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("PGDATABASE", default="postgres"),
-        "USER": config("PGUSER", default="postgres"),
-        "PASSWORD": config("PGPASSWORD", default=""),
-        "HOST": config("PGHOST", default="localhost"),
+        "NAME": config("PGDATABASE"),
+        "USER": config("PGUSER"),
+        "PASSWORD": config("PGPASSWORD"),
+        "HOST": config("PGHOST"),
         "PORT": config("PGPORT", default="5432"),
     }
 }
-
 
 
 # Password validation
