@@ -22,7 +22,7 @@ const Login = () => {
 
 
     try{
-      const response =await axios.post('http://127.0.0.1:8000/api/v1/token/', userData)
+      const response =await axios.post('https://giving-tranquility-production-2d3b.up.railway.app/api/v1/token/', userData)
       localStorage.setItem('accessToken', response.data.access)
       localStorage.setItem('refreshToken', response.data.refresh)
       console.log('Login successful');
