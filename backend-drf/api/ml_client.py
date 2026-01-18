@@ -13,7 +13,7 @@ def get_stock_prediction(ticker: str):
         response = requests.get(
             f"{ML_API_BASE_URL}/predict",
             params={"ticker": ticker},
-            timeout=15
+            timeout=5
         )
 
         response.raise_for_status()
