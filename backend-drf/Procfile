@@ -1,1 +1,1 @@
-web: gunicorn stock_prediction_main.wsgi:application --workers 2 --timeout 120
+web: gunicorn stock_prediction_main.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
