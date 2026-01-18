@@ -165,3 +165,4 @@ MEDIA_ROOT = BASE_DIR /'media'
 CORS_ALLOW_ALL_ORIGINS = True
 
 ML_API_BASE_URL = config("https://stock-prediction-portal-production-79ec.up.railway.app", default="")
+LOGGING_CONFIG = None
