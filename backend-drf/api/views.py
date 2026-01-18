@@ -32,7 +32,7 @@ class StockPredictionAPIView(APIView):
         return Response(
             {
                 "status": "success",
-                "source": "fastapi-ml-service",
+                "source": "ml-api",
                 "data": ml_result
             },
             status=status.HTTP_200_OK
