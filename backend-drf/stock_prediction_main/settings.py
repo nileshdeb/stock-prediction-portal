@@ -95,11 +95,19 @@ WSGI_APPLICATION = "stock_prediction_main.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    "default": dj_database_url.parse(
-        config("DATABASE_URL")
-    )
-}
+DATABASE_URL = config("DATABASE_URL", default=None)
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL)
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -165,4 +173,3 @@ MEDIA_ROOT = BASE_DIR /'media'
 CORS_ALLOW_ALL_ORIGINS = True
 
 ML_API_BASE_URL = config("https://stock-prediction-portal-production-79ec.up.railway.app", default="")
-LOGGING_CONFIG = None
